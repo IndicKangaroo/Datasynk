@@ -7,7 +7,7 @@ from devices import get_devices
 import uuid
 from discovery import announce_device, start_discovery
 import threading
-from sync_manager import sync_loop
+from sync_manager import sync_loop, poll_loop
 from transfer import start_receiver
 
 DEVICE_ID = str(uuid.uuid4())
@@ -24,6 +24,9 @@ async def lifespan(app: FastAPI):
     observer = start_watcher()
     start_receiver(PORT+1)
     sync_thread = threading.Thread(target=sync_loop)
+    poll_thread = threading.Thread(target=poll_loop, args=(DEVICE_ID,))
+    poll_thread.daemon = True
+    poll_thread.start()
     sync_thread.daemon = True
     sync_thread.start()
     zc, info = await announce_device(DEVICE_ID, DEVICE_NAME, PORT)
