@@ -67,31 +67,21 @@ def sync_loop():
         time.sleep(5)
 
 
-
-
-
 def poll_loop(device_id):
+    ping_count = 0
     while True:
         try:
-            response = requests.get(f"{RELAY_URL}/poll/{device_id}")
+            if ping_count % 60 == 0:
+                requests.get(f"{RELAY_URL}/status", timeout=5)
+            ping_count += 1
+
+            response = requests.get(f"{RELAY_URL}/poll/{device_id}", timeout=15)
+            if response.status_code != 200 or not response.text.strip():
+                time.sleep(10)
+                continue
             pending = response.json()
-
-            for item in pending:
-                key = item["file_key"]
-                filename = item["filename"]
-                transfer_id = item["id"]
-
-                save_path = os.path.join(SYNC_FOLDER, filename)
-                IGNORE_PATHS.add(save_path)
-
-                download_file(key, save_path)
-                delete_file(key)
-
-                requests.post(f"{RELAY_URL}/confirm/{transfer_id}")
-                print(f"Downloaded and confirmed: {filename}")
 
         except Exception as e:
             print(f"Poll loop error: {e}")
-
         time.sleep(10)
 
