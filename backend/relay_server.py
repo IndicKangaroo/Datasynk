@@ -1,8 +1,14 @@
 from fastapi import FastAPI
 import sqlite3
 import time
+import boto3
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
+
+
 
 def get_connection():
     conn = sqlite3.connect("relay.db")
@@ -54,6 +60,26 @@ def confirm(transfer_id: int):
     conn.commit()
     conn.close()
     return {"status": "confirmed"}
+
+
+
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url=os.getenv("B2_ENDPOINT"),
+    aws_access_key_id=os.getenv("B2_KEY_ID"),
+    aws_secret_access_key=os.getenv("B2_APPLICATION_KEY")
+)
+
+@app.get("/download-url/{file_key}")
+def get_download_url(file_key: str):
+    url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": os.getenv("B2_BUCKET"), "Key": file_key},
+        ExpiresIn=300  # valid for 5 minutes
+    )
+    return {"url": url}
+
 
 
 if __name__ == "__main__":
